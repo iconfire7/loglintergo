@@ -14,12 +14,10 @@ import (
 )
 
 var Analyzer = &analysis.Analyzer{
-	Name: "loglintergo",
-	Doc:  "checks log messages for style/safety rules",
-	Requires: []*analysis.Analyzer{
-		inspect.Analyzer,
-	},
-	Run: run,
+	Name:     "loglintergo",
+	Doc:      "checks log messages for style/safety rules",
+	Requires: []*analysis.Analyzer{inspect.Analyzer},
+	Run:      run,
 }
 
 var logMethods = map[string]bool{
@@ -122,14 +120,92 @@ func extractFirstStringArg(pass *analysis.Pass, call *ast.CallExpr) (msg string,
 	if len(call.Args) == 0 {
 		return "", token.NoPos, false
 	}
-	lit, ok := call.Args[0].(*ast.BasicLit)
-	if !ok || lit.Kind != token.STRING {
+
+	expr := call.Args[0]
+	s, ok := extractStaticText(pass, expr)
+	if !ok {
 		return "", token.NoPos, false
+	}
+	return s, expr.Pos(), true
+}
+
+// extractStaticText извлекает статический текст из выражения.
+func extractStaticText(pass *analysis.Pass, expr ast.Expr) (string, bool) {
+	switch e := expr.(type) {
+
+	// "literal"
+	case *ast.BasicLit:
+		if e.Kind != token.STRING {
+			return "", false
+		}
+		s, err := strconv.Unquote(e.Value)
+		if err != nil {
+			return "", false
+		}
+		return s, true
+
+	case *ast.BinaryExpr:
+		if e.Op != token.ADD {
+			return "", false
+		}
+
+		if pass != nil && pass.TypesInfo != nil {
+			if t := pass.TypesInfo.TypeOf(e); t != nil && t.String() != "string" {
+				return "", false
+			}
+		}
+
+		if left, ok := extractStaticText(pass, e.X); ok {
+			if right, ok2 := extractStaticText(pass, e.Y); ok2 {
+				return left + right, true
+			}
+			return left, true
+		}
+		if right, ok := extractStaticText(pass, e.Y); ok {
+			return right, true
+		}
+		return "", false
+
+	case *ast.CallExpr:
+		if isFmtSprintf(pass, e) {
+			if len(e.Args) == 0 {
+				return "", false
+			}
+			return extractStaticText(pass, e.Args[0])
+		}
+		return "", false
+
+	case *ast.ParenExpr:
+		return extractStaticText(pass, e.X)
+
+	default:
+		return "", false
+	}
+}
+
+// isFmtSprintf проверяет, что выражение — это именно fmt.Sprintf.
+func isFmtSprintf(pass *analysis.Pass, call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	if sel.Sel == nil || sel.Sel.Name != "Sprintf" {
+		return false
 	}
 
-	s, err := strconv.Unquote(lit.Value)
-	if err != nil {
-		return "", token.NoPos, false
+	id, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return false
 	}
-	return s, lit.Pos(), true
+
+	if pass == nil || pass.TypesInfo == nil {
+		return false
+	}
+
+	pkgName, ok := pass.TypesInfo.Uses[id].(*types.PkgName)
+	if !ok || pkgName.Imported() == nil {
+		return false
+	}
+
+	return pkgName.Imported().Path() == "fmt"
 }

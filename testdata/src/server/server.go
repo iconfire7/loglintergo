@@ -20,10 +20,8 @@ func main() {
 	lg.Debug(fmt.Sprintf("%+v", config{}))
 
 	// db := repo.New(cfg)
-	passwd := "postgres"
 	lg.Info("database connected")
-	lg.Debug("database password" + passwd)
 
 	//http.ListenAndServe("8080", mux)
-	slog.Info("Server started in port 8080")
+	slog.Info("server started in port 8080")
 }

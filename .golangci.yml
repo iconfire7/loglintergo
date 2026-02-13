@@ -1,0 +1,12 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - loglintergo
+
+  settings:
+    custom:
+      loglintergo:
+        type: module
+        description: "Custom log linter"

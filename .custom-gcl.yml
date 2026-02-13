@@ -1,0 +1,8 @@
+version: v2.9.0
+
+destination: .
+
+plugins:
+  - module: github.com/iconfire7/loglintergo
+    import: github.com/iconfire7/loglintergo/plugin
+    path: ./
