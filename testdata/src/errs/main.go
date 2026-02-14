@@ -5,7 +5,7 @@ import (
 	"log/slog"
 )
 
-func main(tk, secret, bearer string) {
+func demo(tk, secret, bearer string) {
 	slog.Info("Hello")
 
 	slog.Info("привет")

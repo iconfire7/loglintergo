@@ -1,4 +1,4 @@
-GOLANGCI ?= ./golangci-lint/golangci-lint
+GOLANGCI ?= golangci-lint
 CUSTOM_GCL ?= ./custom-gcl
 
 .PHONY: tidy test lint-golangci clean

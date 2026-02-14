@@ -71,6 +71,10 @@ func run(cfg config.Config, sensitive []*regexp.Regexp) func(pass *analysis.Pass
 					Message: string(v.ID) + " " + v.Message + " (" + kind + ")",
 				}
 
+				if v.ID == rules.RSensitive && !hasSensitiveDynamic {
+					continue
+				}
+
 				if hasSensitiveDynamic {
 					if v.ID != rules.RSensitive {
 						pass.Report(diag)
@@ -308,7 +312,7 @@ func HasDynamicTail(pass *analysis.Pass, expr ast.Expr) bool {
 		}
 		_, lok := extractStaticText(pass, e.X)
 		_, rok := extractStaticText(pass, e.Y)
-		return lok != rok
+		return !lok || !rok
 
 	case *ast.CallExpr:
 		return isFmtSprintf(pass, e) && len(e.Args) > 1
