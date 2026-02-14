@@ -1,24 +1,17 @@
-package analyzer
+package loglinter
 
 import (
+	"github.com/iconfire7/loglintergo/internal/config"
 	"go/ast"
 	"go/token"
 	"go/types"
 	"strconv"
 
+	"github.com/iconfire7/loglintergo/internal/rules"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
-
-	"github.com/iconfire7/loglintergo/internal/rules"
 )
-
-var Analyzer = &analysis.Analyzer{
-	Name:     "loglintergo",
-	Doc:      "checks log messages for style/safety rules",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      run,
-}
 
 var logMethods = map[string]bool{
 	"Debug": true,
@@ -27,35 +20,46 @@ var logMethods = map[string]bool{
 	"Error": true,
 }
 
+func New(cfg config.Config) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name:     "loglintergo",
+		Doc:      "checks log messages for style/safety rules",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      run(cfg),
+	}
+}
+
 // run — основная функция анализа пакета.
-func run(pass *analysis.Pass) (any, error) {
-	ins := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	ins.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(n ast.Node) {
-		call := n.(*ast.CallExpr)
-		kind := detectLoggerCall(pass, call)
-		if kind == "" {
-			return
-		}
+func run(cfg config.Config) func(pass *analysis.Pass) (any, error) {
+	return func(pass *analysis.Pass) (any, error) {
+		ins := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+		ins.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(n ast.Node) {
+			call := n.(*ast.CallExpr)
+			kind := detectLoggerCall(pass, call)
+			if kind == "" {
+				return
+			}
 
-		msg, pos, ok := extractFirstStringArg(pass, call)
-		if !ok {
-			return
-		}
+			msg, pos, ok := extractFirstStringArg(pass, call)
+			if !ok {
+				return
+			}
 
-		violations := rules.CheckAll(msg)
+			violations := rules.CheckAll(msg, cfg.Rules)
 
-		for _, v := range violations {
-			pass.Reportf(
-				pos,
-				"%s %s (%s)",
-				v.ID,
-				v.Message,
-				kind,
-			)
-		}
-	})
+			for _, v := range violations {
+				pass.Reportf(
+					pos,
+					"%s %s (%s)",
+					v.ID,
+					v.Message,
+					kind,
+				)
+			}
+		})
 
-	return nil, nil
+		return nil, nil
+	}
 }
 
 // detectLoggerCall определяет, является ли вызов CallExpr логированием через slog или zap.

@@ -1,16 +1,13 @@
 GOLANGCI ?= ./golangci-lint/golangci-lint
 CUSTOM_GCL ?= ./custom-gcl
 
-.PHONY: tidy test custom-linter lint-golangci clean
+.PHONY: tidy test lint-golangci clean
 
 tidy:
 	go mod tidy
 
 test:
 	go test ./...
-
-lint-standalone:
-	go run ./cmd ./...
 
 custom-linter:
 	$(GOLANGCI) custom

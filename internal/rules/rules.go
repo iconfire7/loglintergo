@@ -3,6 +3,8 @@ package rules
 import (
 	"strings"
 	"unicode"
+
+	"github.com/iconfire7/loglintergo/internal/config"
 )
 
 type RuleID string
@@ -20,19 +22,27 @@ type Violation struct {
 }
 
 // CheckAll проверяет все правила
-func CheckAll(msg string) []Violation {
+func CheckAll(msg string, rulesConfig config.Rules) []Violation {
 	var out []Violation
-	if v, ok := LowercaseStart(msg); ok {
-		out = append(out, v)
+	if rulesConfig.Lowercase {
+		if v, ok := LowercaseStart(msg); ok {
+			out = append(out, v)
+		}
 	}
-	if v, ok := EnglishOnly(msg); ok {
-		out = append(out, v)
+	if rulesConfig.English {
+		if v, ok := EnglishOnly(msg); ok {
+			out = append(out, v)
+		}
 	}
-	if v, ok := NoEmojiOrSpecials(msg); ok {
-		out = append(out, v)
+	if rulesConfig.EmojiOrSpesial {
+		if v, ok := NoEmojiOrSpecials(msg); ok {
+			out = append(out, v)
+		}
 	}
-	if v, ok := NoSensitiveKeywords(msg); ok {
-		out = append(out, v)
+	if rulesConfig.Sensitive {
+		if v, ok := NoSensitiveKeywords(msg); ok {
+			out = append(out, v)
+		}
 	}
 	return out
 }

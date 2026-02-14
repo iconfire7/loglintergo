@@ -10,3 +10,10 @@ linters:
       loglintergo:
         type: module
         description: "Custom log linter"
+        settings:
+          strict: true
+          rules:
+            lowercase: true
+            english: true
+            emoji_or_special: true
+            sensitive: true
