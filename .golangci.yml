@@ -17,3 +17,6 @@ linters:
             english: true
             emoji_or_special: true
             sensitive: true
+          sensitive_patterns:
+              - '(?i)\b(token|secret|api[_-]?key)\b\s*[:=]'
+              - '(?i)\bauthorization\b\s*:\s*bearer\b'

@@ -56,12 +56,14 @@ func run(cfg config.Config, sensitive []*regexp.Regexp) func(pass *analysis.Pass
 			hasSensitiveDynamic := false
 			if len(call.Args) > 0 {
 				for _, v := range violations {
-					if v.ID == rules.RSensitive && hasDynamicTail(pass, call.Args[0]) {
+					if v.ID == rules.RSensitive && HasDynamicTail(pass, call.Args[0]) {
 						hasSensitiveDynamic = true
 						break
 					}
 				}
 			}
+
+			fixableViolationID, fixableText, hasFixableViolation := pickSingleSuggestedFix(violations, msg)
 
 			for _, v := range violations {
 				diag := analysis.Diagnostic{
@@ -96,21 +98,19 @@ func run(cfg config.Config, sensitive []*regexp.Regexp) func(pass *analysis.Pass
 					continue
 				}
 
-				if v.ID != rules.RSensitive {
-					if fixed, ok := suggestFixForViolation(v.ID, msg); ok {
-						if fixPos, fixEnd, ok2 := fixTargetForFirstArg(pass, call); ok2 {
-							diag.SuggestedFixes = []analysis.SuggestedFix{
-								{
-									Message: "apply fix for " + string(v.ID),
-									TextEdits: []analysis.TextEdit{
-										{
-											Pos:     fixPos,
-											End:     fixEnd,
-											NewText: []byte(strconv.Quote(fixed)),
-										},
+				if hasFixableViolation && v.ID == fixableViolationID {
+					if fixPos, fixEnd, ok2 := fixTargetForFirstArg(pass, call); ok2 {
+						diag.SuggestedFixes = []analysis.SuggestedFix{
+							{
+								Message: "apply fix for " + string(v.ID),
+								TextEdits: []analysis.TextEdit{
+									{
+										Pos:     fixPos,
+										End:     fixEnd,
+										NewText: []byte(strconv.Quote(fixableText)),
 									},
 								},
-							}
+							},
 						}
 					}
 				}
@@ -121,6 +121,30 @@ func run(cfg config.Config, sensitive []*regexp.Regexp) func(pass *analysis.Pass
 
 		return nil, nil
 	}
+}
+
+func pickSingleSuggestedFix(vs []rules.Violation, msg string) (rules.RuleID, string, bool) {
+	order := []rules.RuleID{rules.RSensitive, rules.RNoEmojiSpecial, rules.RLowercaseStart}
+
+	present := map[rules.RuleID]struct{}{}
+	for _, v := range vs {
+		present[v.ID] = struct{}{}
+	}
+
+	for _, id := range order {
+		if _, ok := present[id]; !ok {
+			continue
+		}
+		fixed, ok := suggestFixForViolation(id, msg)
+		if !ok {
+			continue
+		}
+		if fixed == msg {
+			continue
+		}
+		return id, fixed, true
+	}
+	return "", "", false
 }
 
 // detectLoggerCall определяет, является ли вызов CallExpr логированием через slog или zap.
@@ -275,8 +299,8 @@ func isFmtSprintf(pass *analysis.Pass, call *ast.CallExpr) bool {
 	return pkgName.Imported().Path() == "fmt"
 }
 
-// hasDynamicTail возвращает true, если первый аргумент потенциально добавляет динамические данные.
-func hasDynamicTail(pass *analysis.Pass, expr ast.Expr) bool {
+// HasDynamicTail возвращает true, если первый аргумент потенциально добавляет динамические данные.
+func HasDynamicTail(pass *analysis.Pass, expr ast.Expr) bool {
 	switch e := expr.(type) {
 	case *ast.BinaryExpr:
 		if e.Op != token.ADD {

@@ -17,5 +17,6 @@ lint-golangci: custom-linter
 
 clean:
 	go clean
+	go clean -cache
 	rm -f custom-gcl
 	rm -rf .cache/golangci-lint

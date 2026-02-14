@@ -1,6 +1,9 @@
 package rules
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 func TestLowercaseStart(t *testing.T) {
 	cases := []struct {
@@ -47,6 +50,7 @@ func TestNoEmojiOrSpecials(t *testing.T) {
 		want bool
 	}{
 		{"OK", false},
+		{"token=", false},
 		{"Hello🙂", true},
 		{"Привет", true},
 	}
@@ -59,6 +63,11 @@ func TestNoEmojiOrSpecials(t *testing.T) {
 }
 
 func TestNoSensitiveKeywords(t *testing.T) {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\btoken\b`),
+		regexp.MustCompile(`(?i)\bpassword\b`),
+	}
+
 	cases := []struct {
 		in   string
 		want bool
@@ -68,7 +77,7 @@ func TestNoSensitiveKeywords(t *testing.T) {
 		{"Password is invalid", true},
 	}
 	for _, tc := range cases {
-		_, got := NoSensitivePatterns(tc.in)
+		_, got := NoSensitivePatterns(tc.in, patterns)
 		if got != tc.want {
 			t.Fatalf("NoSensitivePatterns(%q)=%v want %v", tc.in, got, tc.want)
 		}

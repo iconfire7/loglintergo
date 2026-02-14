@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
@@ -76,7 +77,7 @@ func EnglishOnly(msg string) (Violation, bool) {
 func NoEmojiOrSpecials(msg string) (Violation, bool) {
 	for _, r := range msg {
 		if !IsAllowedLogChar(r) {
-			return Violation{ID: RNoEmojiSpecial, Message: "log message must not contain emoji or special characters"}, true
+			return Violation{ID: RNoEmojiSpecial, Message: fmt.Sprintf("log message must not contain emoji or special characters (bad rune %U, %q)", r, string(r))}, true
 		}
 	}
 	return Violation{}, false
@@ -113,7 +114,7 @@ func IsAllowedLogChar(r rune) bool {
 	}
 
 	switch r {
-	case ' ', '\t', '\n', '\r', ':', '.', '%', '[', ']', ',', '/', '_', '-', '=':
+	case ' ', '\t', '\n', '\r', ':', '.', '%', '[', ']', ',', '/', '_', '-', '=', '+':
 		return true
 	default:
 		return false

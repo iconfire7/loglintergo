@@ -8,7 +8,7 @@ type Config struct {
 type Rules struct {
 	Lowercase      bool `mapstructure:"lowercase"`
 	English        bool `mapstructure:"english"`
-	EmojiOrSpesial bool `mapstructure:"emoji_or_spesial"`
+	EmojiOrSpesial bool `mapstructure:"emoji_or_special"`
 	Sensitive      bool `mapstructure:"sensitive"`
 }
 
@@ -21,7 +21,10 @@ func Default() Config {
 			Sensitive:      true,
 		},
 		SensitivePatterns: []string{
-			"(?i)\\\\b(token|secret|api[_-]?key)\\\\b\\\\s*[:=]",
+			`(?i)\b(token|secret|api[_-]?key)\b\s*[:=]`,
+			`(?i)\bauthorization\b\s*:\s*bearer\b`,
+			// опционально: если встречается просто "Bearer <token>" без слова Authorization
+			`(?i)\bbearer\b\s+\S+`,
 		},
 	}
 }
