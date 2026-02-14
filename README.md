@@ -52,7 +52,12 @@ linters:
             english: true
             emoji_or_special: true
             sensitive: true
+          sensitive_patterns:
+            - '(?i)\b(token|secret|api[_-]?key)\b\s*[:=]'
+            - '(?i)\bauthorization\b\s*:\s*bearer\b'
 ```
+- Значения в `rules` можно менять прямо в конфиге (`true/false`), чтобы включать или выключать отдельные проверки.
+- В `sensitive_patterns` можно добавлять свои регулярные выражения для поиска чувствительных данных в логах.
 
 ## Быстрый старт (через Makefile)
 
