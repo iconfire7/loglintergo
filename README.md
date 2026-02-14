@@ -20,7 +20,8 @@
 │   ├── config/               # структура конфигурации линтера
 │   └── rules/                # реализация правил + тесты
 ├── plugin/                   # точка входа плагина для golangci-lint
-├── testdata/                 # пример исходников для локальной проверки
+├── testdata/                 # примеры исходников для локальной проверки
+│   └── src/errs/main.go      # демонстрационный файл с намеренно добавленными ошибками
 ├── .custom-gcl.yml           # конфиг сборки custom golangci-lint бинаря
 ├── .golangci.yml             # конфиг запуска линтера + его настройки
 ├── Makefile                  # удобные команды для разработки
@@ -31,6 +32,8 @@
 
 - Go 1.23+
 - `golangci-lint` с поддержкой custom module plugin system (`golangci-lint custom`)
+- утилита `golangci-lint` с поддержкой custom module plugin system (`golangci-lint custom`)
+- `make` (опционально, если используете команды из `Makefile`)
 
 ## Конфигурация линтера
 
@@ -47,11 +50,11 @@ linters:
           rules:
             lowercase: true
             english: true
-            emoji_or_spesial: true
+            emoji_or_special: true
             sensitive: true
 ```
 
-## Запуск: вариант 1 (через Makefile)
+## Быстрый старт (через Makefile)
 
 1. Подтянуть зависимости:
 
@@ -78,7 +81,7 @@ make test   # go test ./...
 make clean  # чистка артефактов
 ```
 
-## Запуск: вариант 2 (вручную)
+## Ручной запуск
 
 1. Установить зависимости:
 
@@ -98,6 +101,28 @@ go mod tidy
 ./custom-gcl run --config .golangci.yml ./testdata/src/...
 ```
 
+4. Запустить автоисправление поддерживаемых линтеров:
+
+```bash
+./custom-gcl run --fix --config .golangci.yml ./testdata/src/...
+```
+
+## Проверка на демонстрационных ошибках
+
+В `testdata/src/errs/main.go` специально оставлены ошибки в лог-сообщениях, чтобы можно было проверить работу линтера на реальных примерах.
+
+- Проверить ошибки:
+
+```bash
+./custom-gcl run --config .golangci.yml ./testdata/src/...
+```
+
+- Попробовать исправить автоматически:
+
+```bash
+./custom-gcl run --fix --config .golangci.yml ./testdata/src/...
+```
+
 ## Быстрый локальный цикл разработки
 
 - Меняете правила в `internal/rules`.
@@ -115,6 +140,5 @@ make lint-golangci
 
 ## Полезные замечания
 
-- Линтер анализирует только статический текст первого аргумента лог-вызова.
 - Поддерживаются вызовы `slog` и `zap` (включая `SugaredLogger`).
 - Если конфигурация не передана, используются значения по умолчанию (все правила включены).
