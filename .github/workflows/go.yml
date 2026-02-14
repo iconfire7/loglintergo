@@ -1,0 +1,70 @@
+name: Go
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup bootstrap Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: false
+
+      - name: Install gotip
+        run: |
+          set -euxo pipefail
+          go install golang.org/dl/gotip@latest
+          gotip download
+          gotip version
+
+      - name: Format check
+        run: |
+          set -euxo pipefail
+          bad=$(gotip fmt -l . || true)
+          if [ -n "$bad" ]; then
+            echo "gofmt issues:"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: Vet
+        run: |
+          set -euxo pipefail
+          gotip vet ./...
+
+      - name: Test
+        run: |
+          set -euxo pipefail
+          gotip test ./... -race
+
+      - name: Build custom-gcl (golangci-lint + plugin)
+        run: |
+          set -euxo pipefail
+          GCL_VER="v2.9.0"  # поменяй при необходимости
+
+          mkdir -p /tmp/gcl
+          cd /tmp/gcl
+          git clone --depth 1 --branch "$GCL_VER" https://github.com/golangci/golangci-lint.git
+          cd golangci-lint
+
+          gotip mod edit -replace github.com/iconfire7/loglintergo="$GITHUB_WORKSPACE"
+          gotip mod tidy
+
+          gotip build -o "$GITHUB_WORKSPACE/custom-gcl" ./cmd/golangci-lint
+          "$GITHUB_WORKSPACE/custom-gcl" --version || true
+
+      - name: Run custom-gcl
+        run: |
+          set -euxo pipefail
+          ./custom-gcl run ./...
