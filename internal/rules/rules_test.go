@@ -68,9 +68,9 @@ func TestNoSensitiveKeywords(t *testing.T) {
 		{"Password is invalid", true},
 	}
 	for _, tc := range cases {
-		_, got := NoSensitiveKeywords(tc.in)
+		_, got := NoSensitivePatterns(tc.in)
 		if got != tc.want {
-			t.Fatalf("NoSensitiveKeywords(%q)=%v want %v", tc.in, got, tc.want)
+			t.Fatalf("NoSensitivePatterns(%q)=%v want %v", tc.in, got, tc.want)
 		}
 	}
 }

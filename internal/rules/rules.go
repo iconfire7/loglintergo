@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -22,7 +23,7 @@ type Violation struct {
 }
 
 // CheckAll проверяет все правила
-func CheckAll(msg string, rulesConfig config.Rules) []Violation {
+func CheckAll(msg string, rulesConfig config.Rules, sensitive []*regexp.Regexp) []Violation {
 	var out []Violation
 	if rulesConfig.Lowercase {
 		if v, ok := LowercaseStart(msg); ok {
@@ -40,7 +41,7 @@ func CheckAll(msg string, rulesConfig config.Rules) []Violation {
 		}
 	}
 	if rulesConfig.Sensitive {
-		if v, ok := NoSensitiveKeywords(msg); ok {
+		if v, ok := NoSensitivePatterns(msg, sensitive); ok {
 			out = append(out, v)
 		}
 	}
@@ -56,7 +57,7 @@ func LowercaseStart(msg string) (Violation, bool) {
 
 	r, _ := getFirstRune(s)
 	if unicode.IsLetter(r) && unicode.IsUpper(r) {
-		return Violation{ID: RLowercaseStart, Message: "log message must not start with a lowercase letter"}, true
+		return Violation{ID: RLowercaseStart, Message: "log message must not start with an uppercase letter"}, true
 	}
 	return Violation{}, false
 }
@@ -74,26 +75,21 @@ func EnglishOnly(msg string) (Violation, bool) {
 // NoEmojiOrSpecials проверяет на спецсимволы и эмодзи
 func NoEmojiOrSpecials(msg string) (Violation, bool) {
 	for _, r := range msg {
-		if r > 127 {
+		if !IsAllowedLogChar(r) {
 			return Violation{ID: RNoEmojiSpecial, Message: "log message must not contain emoji or special characters"}, true
 		}
 	}
 	return Violation{}, false
 }
 
-// NoSensitiveKeywords проверяет на чувствительные данные
-func NoSensitiveKeywords(msg string) (Violation, bool) {
-	s := strings.ToLower(msg)
-	keywords := []string{
-		"password", "passwd", "pwd",
-		"secret", "token", "apikey", "api_key",
-		"bearer", "authorization",
-		"cookie", "session", "jwt",
-		"private_key", "ssh key",
+// NoSensitivePatterns проверяет на чувствительные данные
+func NoSensitivePatterns(msg string, patterns []*regexp.Regexp) (Violation, bool) {
+	if len(patterns) == 0 {
+		return Violation{}, false
 	}
-	for _, kw := range keywords {
-		if strings.Contains(s, kw) {
-			return Violation{ID: RSensitive, Message: "log message contains sensitive keywords"}, true
+	for _, re := range patterns {
+		if re.MatchString(msg) {
+			return Violation{ID: RSensitive, Message: "log message matches sensitive pattern"}, true
 		}
 	}
 	return Violation{}, false
@@ -105,4 +101,21 @@ func getFirstRune(s string) (rune, int) {
 		return r, i
 	}
 	return 0, 0
+}
+
+func IsAllowedLogChar(r rune) bool {
+	if r > 127 {
+		return false
+	}
+
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return true
+	}
+
+	switch r {
+	case ' ', '\t', '\n', '\r', ':', '.', '%', '[', ']', ',', '/', '_', '-', '=':
+		return true
+	default:
+		return false
+	}
 }

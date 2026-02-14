@@ -1,7 +1,8 @@
 package config
 
 type Config struct {
-	Rules Rules `mapstructure:"rules"`
+	Rules             Rules    `mapstructure:"rules"`
+	SensitivePatterns []string `mapstructure:"sensitive_patterns"`
 }
 
 type Rules struct {
@@ -18,6 +19,9 @@ func Default() Config {
 			English:        true,
 			EmojiOrSpesial: true,
 			Sensitive:      true,
+		},
+		SensitivePatterns: []string{
+			"(?i)\\\\b(token|secret|api[_-]?key)\\\\b\\\\s*[:=]",
 		},
 	}
 }

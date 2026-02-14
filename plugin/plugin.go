@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/golangci/plugin-module-register/register"
 	"github.com/mitchellh/mapstructure"
@@ -16,11 +17,12 @@ func init() {
 }
 
 type Plugin struct {
-	cfg config.Config
+	cfg       config.Config
+	sensitive []*regexp.Regexp
 }
 
 func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	return []*analysis.Analyzer{loglinter.New(p.cfg)}, nil
+	return []*analysis.Analyzer{loglinter.New(p.cfg, p.sensitive)}, nil
 }
 
 func (p *Plugin) GetLoadMode() string {
@@ -51,5 +53,17 @@ func New(settings any) (register.LinterPlugin, error) {
 		return nil, fmt.Errorf("decode settings: %w", err)
 	}
 
-	return &Plugin{cfg: cfg}, nil
+	var reg []*regexp.Regexp
+	if cfg.Rules.Sensitive && len(cfg.SensitivePatterns) > 0 {
+		reg = make([]*regexp.Regexp, 0, len(cfg.SensitivePatterns))
+		for _, p := range cfg.SensitivePatterns {
+			re, err := regexp.Compile(p)
+			if err != nil {
+				return nil, fmt.Errorf("invalid sensitive pattern %q: %w", p, err)
+			}
+			reg = append(reg, re)
+		}
+	}
+
+	return &Plugin{cfg: cfg, sensitive: reg}, nil
 }
