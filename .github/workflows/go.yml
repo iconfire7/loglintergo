@@ -48,21 +48,17 @@ jobs:
           set -euxo pipefail
           gotip test ./... -race
 
-      - name: Build custom-gcl (golangci-lint + plugin)
+      - name: Install golangci-lint
         run: |
           set -euxo pipefail
-          GCL_VER="v2.9.0"  # поменяй при необходимости
+          gotip install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.9.0
+          golangci-lint --version
 
-          mkdir -p /tmp/gcl
-          cd /tmp/gcl
-          git clone --depth 1 --branch "$GCL_VER" https://github.com/golangci/golangci-lint.git
-          cd golangci-lint
-
-          gotip mod edit -replace github.com/iconfire7/loglintergo="$GITHUB_WORKSPACE"
-          gotip mod tidy
-
-          gotip build -o "$GITHUB_WORKSPACE/custom-gcl" ./cmd/golangci-lint
-          "$GITHUB_WORKSPACE/custom-gcl" --version || true
+      - name: Build custom-gcl with plugin
+        run: |
+          set -euxo pipefail
+          golangci-lint custom -v
+          ./custom-gcl --version || true
 
       - name: Run custom-gcl
         run: |
